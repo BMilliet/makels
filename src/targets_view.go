@@ -35,7 +35,7 @@ func NewTargetsViewModel(targets []MakeTarget, config *Config) TargetsViewModel 
 		currentPage:   0,
 		cursor:        0,
 		viewportStart: 0,
-		maxVisible:    10,
+		maxVisible:    4, // Show only 4 items at a time
 		quitting:      false,
 		styles:        DefaultStyles(),
 		searchMode:    false,
@@ -128,10 +128,12 @@ func (m TargetsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			items := m.getActiveList()
 			if m.cursor > 0 {
 				m.cursor--
-				if m.cursor < m.viewportStart+2 && m.viewportStart > 0 {
-					m.viewportStart--
+				// Adjust viewport to keep cursor visible with offset
+				if m.cursor < m.viewportStart {
+					m.viewportStart = m.cursor
 				}
 			} else {
+				// Wrap to bottom
 				m.cursor = len(items) - 1
 				if len(items) > m.maxVisible {
 					m.viewportStart = len(items) - m.maxVisible
@@ -144,10 +146,13 @@ func (m TargetsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			items := m.getActiveList()
 			if m.cursor < len(items)-1 {
 				m.cursor++
-				if m.cursor >= m.viewportStart+m.maxVisible-2 {
-					m.viewportStart++
+				// Adjust viewport to keep cursor visible with offset
+				// Keep cursor in the middle-ish of viewport
+				if m.cursor >= m.viewportStart+m.maxVisible {
+					m.viewportStart = m.cursor - m.maxVisible + 1
 				}
 			} else {
+				// Wrap to top
 				m.cursor = 0
 				m.viewportStart = 0
 			}
@@ -336,15 +341,34 @@ func (m TargetsViewModel) View() string {
 					Foreground(m.styles.AquamarineColor).
 					Bold(true)
 
-				description := item.Description
-				if description == "" {
-					description = "No description"
+				var descriptionText string
+				if item.Description != "" {
+					// Has description from comment
+					descriptionText = valueStyle.Render(item.Description)
+				} else if len(item.Recipe) > 0 {
+					// No description, show code preview
+					codeStyle := lipgloss.NewStyle().
+						Foreground(m.styles.FadedCodeColor).
+						Italic(true)
+					
+					var previewLines []string
+					for _, recipeLine := range item.Recipe {
+						// Truncate long lines (max 60 chars)
+						if len(recipeLine) > 60 {
+							recipeLine = recipeLine[:57] + "..."
+						}
+						previewLines = append(previewLines, recipeLine)
+					}
+					descriptionText = codeStyle.Render(strings.Join(previewLines, "\n"))
+				} else {
+					// No description and no recipe
+					descriptionText = valueStyle.Render("No description")
 				}
 
-				content = fmt.Sprintf("%s\n%s %s",
+				content = fmt.Sprintf("%s\n%s\n%s",
 					titleStyle.Render(titleText),
 					targetStyle.Render("make"),
-					valueStyle.Render(description),
+					descriptionText,
 				)
 			}
 

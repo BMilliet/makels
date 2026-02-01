@@ -32,6 +32,7 @@ type Styles struct {
 	// Muted colors for unselected items
 	MutedTitleColor  lipgloss.Color
 	MutedBorderColor lipgloss.Color
+	FadedCodeColor   lipgloss.Color
 
 	// Search and highlight colors
 	SearchBoxColor   lipgloss.Color
@@ -51,32 +52,36 @@ type Styles struct {
 func DefaultStyles() *Styles {
 	s := new(Styles)
 
-	s.PeachColor = lipgloss.Color("#F2B391")
-	s.CoralColor = lipgloss.Color("#F39194")
-	s.OrchidColor = lipgloss.Color("#E3B5BF")
-	s.ThistleColor = lipgloss.Color("#DAC3E9")
-	s.NyanzaColor = lipgloss.Color("#E9F2D0")
-	s.ErrorColor = lipgloss.Color("#FF99B8")
-	s.AquamarineColor = lipgloss.Color("#B4F8D5")
+	// Green palette
+	s.PeachColor = lipgloss.Color("#A8E6A3")      // Light green
+	s.CoralColor = lipgloss.Color("#7FD97F")      // Medium green
+	s.OrchidColor = lipgloss.Color("#6BCF6B")     // Emerald green
+	s.ThistleColor = lipgloss.Color("#90EE90")    // Mint green
+	s.NyanzaColor = lipgloss.Color("#D4F1D4")     // Pale green
+	s.ErrorColor = lipgloss.Color("#FF6B6B")      // Red for errors
+	s.AquamarineColor = lipgloss.Color("#5FD3A6") // Aqua green
 	s.DividerColor = lipgloss.Color("#6B6B6B")
 
 	// Muted colors for unselected items
 	s.MutedTitleColor = lipgloss.Color("#6B6B6B")  // Subtle gray
 	s.MutedBorderColor = lipgloss.Color("#3A3A3A") // Very dark gray
 
+	// Faded color for code preview
+	s.FadedCodeColor = lipgloss.Color("#5A5A5A") // Very muted gray for code
+
 	// Search and highlight colors
 	s.SearchBoxColor = s.AquamarineColor
 	s.SearchTextColor = s.ThistleColor
-	s.HighlightBgColor = lipgloss.Color("#FFD700") // Gold/yellow
+	s.HighlightBgColor = lipgloss.Color("#90EE90") // Light green highlight
 	s.HighlightFgColor = lipgloss.Color("#1A1A1A") // Dark text for readability
 
-	// Settings colors
-	s.SettingsTitleColor = lipgloss.Color("#9B8B9F")
-	s.SettingsSelectedTitleColor = lipgloss.Color("#C5B0C9")
-	s.SettingsBorderColor = lipgloss.Color("#7A6B7E")
-	s.SettingsValueColor = lipgloss.Color("#ADA0B0")
-	s.SettingsEnabledColor = lipgloss.Color("#A8DDA8")
-	s.SettingsDisabledColor = lipgloss.Color("#E8999D")
+	// Settings colors - green tones
+	s.SettingsTitleColor = lipgloss.Color("#8FB98F")         // Muted sage green
+	s.SettingsSelectedTitleColor = lipgloss.Color("#A8D5A8") // Soft green
+	s.SettingsBorderColor = lipgloss.Color("#6B9B6B")        // Medium sage
+	s.SettingsValueColor = lipgloss.Color("#B5D4B5")         // Light sage
+	s.SettingsEnabledColor = lipgloss.Color("#7FD97F")       // Bright green
+	s.SettingsDisabledColor = lipgloss.Color("#E8999D")      // Soft red
 
 	s.BorderColor = s.OrchidColor
 	s.FooterColor = s.NyanzaColor
