@@ -12,7 +12,6 @@ import (
 type TargetsViewModel struct {
 	targets       []MakeTarget
 	config        *Config
-	currentPage   int
 	cursor        int
 	viewportStart int
 	maxVisible    int
@@ -22,17 +21,12 @@ type TargetsViewModel struct {
 	searchMode    bool
 	searchQuery   string
 	filteredList  []MakeTarget
-	totalPages    int // Targets + Settings page
 }
 
 func NewTargetsViewModel(targets []MakeTarget, config *Config) TargetsViewModel {
-	// Total pages = 1 (targets) + 1 (settings)
-	totalPages := 2
-
 	m := TargetsViewModel{
 		targets:       targets,
 		config:        config,
-		currentPage:   0,
 		cursor:        0,
 		viewportStart: 0,
 		maxVisible:    4, // Show only 4 items at a time
@@ -41,7 +35,6 @@ func NewTargetsViewModel(targets []MakeTarget, config *Config) TargetsViewModel 
 		searchMode:    false,
 		searchQuery:   "",
 		filteredList:  []MakeTarget{},
-		totalPages:    totalPages,
 	}
 
 	return m
@@ -82,7 +75,7 @@ func (m TargetsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, tea.Quit
 
 		case "/":
-			if !m.searchMode && m.currentPage == 0 {
+			if !m.searchMode {
 				m.searchMode = true
 				m.searchQuery = ""
 				m.filteredList = []MakeTarget{}
@@ -99,30 +92,6 @@ func (m TargetsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.viewportStart = 0
 				return m, nil
 			}
-
-		case "left", "h":
-			if m.searchMode {
-				return m, nil
-			}
-			if m.currentPage > 0 {
-				m.currentPage--
-			} else {
-				m.currentPage = m.totalPages - 1
-			}
-			m.cursor = 0
-			m.viewportStart = 0
-
-		case "right", "l":
-			if m.searchMode {
-				return m, nil
-			}
-			if m.currentPage < m.totalPages-1 {
-				m.currentPage++
-			} else {
-				m.currentPage = 0
-			}
-			m.cursor = 0
-			m.viewportStart = 0
 
 		case "up", "k":
 			items := m.getActiveList()
@@ -160,16 +129,7 @@ func (m TargetsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			items := m.getActiveList()
 			if len(items) > 0 && m.cursor < len(items) {
-				// Check if we're on settings page
-				if m.isSettingsPage() {
-					settingsItem := m.getSettingsItems()[m.cursor]
-					result := fmt.Sprintf("settings|%s", settingsItem.Key)
-					*m.selected = result
-					m.quitting = true
-					return m, tea.Quit
-				}
-
-				// Regular target selection
+				// Target selection
 				selectedTarget := items[m.cursor]
 				result := fmt.Sprintf("target|%s", selectedTarget.Name)
 				*m.selected = result
@@ -201,25 +161,14 @@ func (m TargetsViewModel) View() string {
 
 	var b strings.Builder
 
-	// Header with tabs
-	var tabViews []string
-
-	// Targets tab
-	if m.currentPage == 0 {
-		tabViews = append(tabViews, m.styles.Text("[ Targets ]", m.styles.SelectedTitleColor))
-	} else {
-		tabViews = append(tabViews, m.styles.Text("  Targets  ", m.styles.MutedTitleColor))
-	}
-
-	// Settings tab
-	if m.currentPage == 1 {
-		tabViews = append(tabViews, m.styles.Text("[ Settings ⚙️ ]", m.styles.SettingsSelectedTitleColor))
-	} else {
-		tabViews = append(tabViews, m.styles.Text("  Settings ⚙️  ", m.styles.SettingsTitleColor))
-	}
+	// Title
+	titleStyle := lipgloss.NewStyle().
+		Foreground(m.styles.TitleColor).
+		Bold(true).
+		PaddingLeft(1)
 
 	b.WriteString("\n")
-	b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, tabViews...))
+	b.WriteString(titleStyle.Render("Makefile Targets"))
 	b.WriteString("\n\n")
 
 	// Show search box if in search mode
@@ -258,19 +207,12 @@ func (m TargetsViewModel) View() string {
 			b.WriteString("\n\n")
 		}
 
-		// Check if we're on settings page
-		isSettings := m.isSettingsPage()
-
 		for i := m.viewportStart; i < visibleEnd; i++ {
 			var itemBox lipgloss.Style
 			var borderColor lipgloss.Color
 
 			if m.cursor == i {
-				if isSettings {
-					borderColor = m.styles.SettingsSelectedTitleColor
-				} else {
-					borderColor = m.styles.SelectedTitleColor
-				}
+				borderColor = m.styles.SelectedTitleColor
 				itemBox = lipgloss.NewStyle().
 					Border(lipgloss.RoundedBorder()).
 					BorderForeground(borderColor).
@@ -278,11 +220,7 @@ func (m TargetsViewModel) View() string {
 					Width(70).
 					MarginLeft(2)
 			} else {
-				if isSettings {
-					borderColor = m.styles.SettingsBorderColor
-				} else {
-					borderColor = m.styles.MutedBorderColor
-				}
+				borderColor = m.styles.MutedBorderColor
 				itemBox = lipgloss.NewStyle().
 					Border(lipgloss.RoundedBorder()).
 					BorderForeground(borderColor).
@@ -293,21 +231,11 @@ func (m TargetsViewModel) View() string {
 			titleStyle := lipgloss.NewStyle().Bold(true)
 			var valueColor lipgloss.Color
 			if m.cursor == i {
-				if isSettings {
-					titleStyle = titleStyle.Foreground(m.styles.SettingsSelectedTitleColor)
-					valueColor = m.styles.SettingsValueColor
-				} else {
-					titleStyle = titleStyle.Foreground(m.styles.SelectedTitleColor)
-					valueColor = m.styles.FooterColor
-				}
+				titleStyle = titleStyle.Foreground(m.styles.SelectedTitleColor)
+				valueColor = m.styles.FooterColor
 			} else {
-				if isSettings {
-					titleStyle = titleStyle.Foreground(m.styles.SettingsTitleColor)
-					valueColor = m.styles.SettingsValueColor
-				} else {
-					titleStyle = titleStyle.Foreground(m.styles.MutedTitleColor)
-					valueColor = m.styles.MutedTitleColor
-				}
+				titleStyle = titleStyle.Foreground(m.styles.MutedTitleColor)
+				valueColor = m.styles.MutedTitleColor
 			}
 
 			valueStyle := lipgloss.NewStyle().
@@ -315,62 +243,48 @@ func (m TargetsViewModel) View() string {
 				Width(66).
 				Italic(true)
 
-			var content string
-
-			if isSettings {
-				// Render settings item
-				settingsItem := m.getSettingsItems()[i]
-				var titleText string
-				titleText = settingsItem.Label
-
-				content = fmt.Sprintf("%s\n%s",
-					titleStyle.Render(titleText),
-					valueStyle.Render(settingsItem.Value),
-				)
+			// Render target item
+			item := items[i]
+			var titleText string
+			if m.searchMode && m.searchQuery != "" {
+				titleText = m.highlightMatches(item.Name, m.searchQuery)
 			} else {
-				// Render target item
-				item := items[i]
-				var titleText string
-				if m.searchMode && m.searchQuery != "" {
-					titleText = m.highlightMatches(item.Name, m.searchQuery)
-				} else {
-					titleText = item.Name
-				}
-
-				targetStyle := lipgloss.NewStyle().
-					Foreground(m.styles.AquamarineColor).
-					Bold(true)
-
-				var descriptionText string
-				if item.Description != "" {
-					// Has description from comment
-					descriptionText = valueStyle.Render(item.Description)
-				} else if len(item.Recipe) > 0 {
-					// No description, show code preview
-					codeStyle := lipgloss.NewStyle().
-						Foreground(m.styles.FadedCodeColor).
-						Italic(true)
-					
-					var previewLines []string
-					for _, recipeLine := range item.Recipe {
-						// Truncate long lines (max 60 chars)
-						if len(recipeLine) > 60 {
-							recipeLine = recipeLine[:57] + "..."
-						}
-						previewLines = append(previewLines, recipeLine)
-					}
-					descriptionText = codeStyle.Render(strings.Join(previewLines, "\n"))
-				} else {
-					// No description and no recipe
-					descriptionText = valueStyle.Render("No description")
-				}
-
-				content = fmt.Sprintf("%s\n%s\n%s",
-					titleStyle.Render(titleText),
-					targetStyle.Render("make"),
-					descriptionText,
-				)
+				titleText = item.Name
 			}
+
+			targetStyle := lipgloss.NewStyle().
+				Foreground(m.styles.AquamarineColor).
+				Bold(true)
+
+			var descriptionText string
+			if item.Description != "" {
+				// Has description from comment
+				descriptionText = valueStyle.Render(item.Description)
+			} else if len(item.Recipe) > 0 {
+				// No description, show code preview
+				codeStyle := lipgloss.NewStyle().
+					Foreground(m.styles.FadedCodeColor).
+					Italic(true)
+				
+				var previewLines []string
+				for _, recipeLine := range item.Recipe {
+					// Truncate long lines (max 60 chars)
+					if len(recipeLine) > 60 {
+						recipeLine = recipeLine[:57] + "..."
+					}
+					previewLines = append(previewLines, recipeLine)
+				}
+				descriptionText = codeStyle.Render(strings.Join(previewLines, "\n"))
+			} else {
+				// No description and no recipe
+				descriptionText = valueStyle.Render("No description")
+			}
+
+			content := fmt.Sprintf("%s\n%s\n%s",
+				titleStyle.Render(titleText),
+				targetStyle.Render("make"),
+				descriptionText,
+			)
 
 			b.WriteString(itemBox.Render(content))
 			b.WriteString("\n")
@@ -389,9 +303,6 @@ func (m TargetsViewModel) View() string {
 		helpText = "  type to search • ↑↓/jk navigate • enter select • esc cancel"
 	} else {
 		helpText = "  / search • ↑↓/jk navigate • enter select • q/esc quit"
-		if m.totalPages > 1 {
-			helpText = "  / search • ←→/hl switch • ↑↓/jk navigate • enter select • q/esc quit"
-		}
 	}
 	b.WriteString(m.styles.FooterStyle.Render(helpText + "\n"))
 
@@ -403,34 +314,7 @@ func (m TargetsViewModel) getActiveList() []MakeTarget {
 		return m.filteredList
 	}
 
-	// Check if we're on settings page
-	if m.isSettingsPage() {
-		// Convert settings items to MakeTarget format for display
-		return []MakeTarget{}
-	}
-
 	return m.targets
-}
-
-func (m TargetsViewModel) isSettingsPage() bool {
-	return m.currentPage == 1
-}
-
-type SettingsItem struct {
-	Key   string
-	Label string
-	Value string
-}
-
-func (m TargetsViewModel) getSettingsItems() []SettingsItem {
-	items := []SettingsItem{
-		{
-			Key:   "makefile",
-			Label: "Makefile Path",
-			Value: m.config.MakefilePath,
-		},
-	}
-	return items
 }
 
 func (m *TargetsViewModel) updateFilteredList() {

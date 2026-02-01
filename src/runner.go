@@ -61,29 +61,9 @@ func (r *Runner) Start() {
 	pageType := parts[0]
 	itemName := parts[1]
 
-	// Handle settings
-	if pageType == "settings" {
-		r.handleSettings(itemName)
-		return
-	}
-
 	// Handle target execution
 	if pageType == "target" {
 		r.executeTarget(itemName)
-	}
-}
-
-func (r *Runner) handleSettings(settingKey string) {
-	styles := DefaultStyles()
-
-	switch settingKey {
-	case "makefile":
-		fmt.Println()
-		fmt.Println(styles.Text("Current Makefile path: "+r.config.MakefilePath, styles.ThistleColor))
-		fmt.Println(styles.Text("(Settings feature coming soon)", styles.FooterColor))
-		fmt.Println()
-	default:
-		return
 	}
 }
 
