@@ -97,9 +97,9 @@ func (m TargetsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			items := m.getActiveList()
 			if m.cursor > 0 {
 				m.cursor--
-				// Adjust viewport to keep cursor visible with offset
-				if m.cursor < m.viewportStart {
-					m.viewportStart = m.cursor
+				// Scroll up if cursor moves above viewport with offset (keep 1-2 items visible above)
+				if m.cursor < m.viewportStart+1 && m.viewportStart > 0 {
+					m.viewportStart--
 				}
 			} else {
 				// Wrap to bottom
@@ -115,10 +115,9 @@ func (m TargetsViewModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			items := m.getActiveList()
 			if m.cursor < len(items)-1 {
 				m.cursor++
-				// Adjust viewport to keep cursor visible with offset
-				// Keep cursor in the middle-ish of viewport
-				if m.cursor >= m.viewportStart+m.maxVisible {
-					m.viewportStart = m.cursor - m.maxVisible + 1
+				// Scroll down if cursor moves below viewport with offset (keep 1-2 items visible below)
+				if m.cursor >= m.viewportStart+m.maxVisible-1 {
+					m.viewportStart++
 				}
 			} else {
 				// Wrap to top
