@@ -29,7 +29,7 @@ Fast, beautiful menu selection for your Makefile targets with fuzzy search
 
 ```bash
 # Clone the repository
-git clone <your-repo-url>
+git clone https://github.com/BMilliet/makels.git
 cd makels
 
 # Install dependencies
