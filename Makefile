@@ -2,6 +2,8 @@
 
 # Variables
 BINARY_NAME=makels
+MAKELS_TERM ?= tmux-256color
+MAKELS_COLORTERM ?= truecolor
 GO_FILES=$(shell find . -name '*.go' -not -path "./vendor/*")
 GO_PACKAGES=$(shell go list ./... | grep -v /vendor/)
 
@@ -19,7 +21,9 @@ build: ## Build the application
 	@echo "🏗️  Building $(BINARY_NAME)..."
 	go build -o $(BINARY_NAME) .
 	mkdir -p ~/.makels
-	mv ${BINARY_NAME} ~/.makels/${BINARY_NAME}
+	mv ${BINARY_NAME} ~/.makels/${BINARY_NAME}-bin
+	printf '%s\n' '#!/bin/sh' 'TERM=$${MAKELS_TERM:-$(MAKELS_TERM)} COLORTERM=$${COLORTERM:-$(MAKELS_COLORTERM)} exec "$$HOME/.makels/$(BINARY_NAME)-bin" "$$@"' > ~/.makels/${BINARY_NAME}
+	chmod +x ~/.makels/${BINARY_NAME}
 	@echo "✓ Binary installed at ~/.makels/$(BINARY_NAME)"
 
 install: ## Add ~/.makels to PATH (show instructions)
@@ -31,7 +35,7 @@ install: ## Add ~/.makels to PATH (show instructions)
 
 run: ## Run the application without building binary
 	@echo "🚀 Running $(BINARY_NAME)..."
-	go run main.go
+	TERM=$(MAKELS_TERM) COLORTERM=$(MAKELS_COLORTERM) go run main.go
 
 fmt: ## Format Go code
 	@echo "✨ Formatting code..."

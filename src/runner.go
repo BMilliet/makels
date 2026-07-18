@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strings"
+	"syscall"
 )
 
 type Runner struct {
@@ -47,6 +49,7 @@ func (r *Runner) Start() {
 	// Step 3: Show targets view
 	var selected string
 	TargetsView(targets, r.config, &selected)
+	drainPendingTerminalInput()
 
 	if selected == ExitSignal || selected == "" {
 		return
@@ -80,7 +83,51 @@ func (r *Runner) executeTarget(targetName string) {
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
-	err := cmd.Run()
+	interrupted := false
+	signals := make(chan os.Signal, 1)
+	signal.Notify(signals, os.Interrupt, syscall.SIGTERM)
+	defer signal.Stop(signals)
+
+	err := cmd.Start()
+	if err != nil {
+		fmt.Println()
+		fmt.Println(styles.Text(fmt.Sprintf("⚠️  Error executing target: %v", err), styles.ErrorColor))
+		fmt.Println()
+		return
+	}
+
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+	}()
+
+	interrupts := 0
+waitForTarget:
+	for {
+		select {
+		case err = <-done:
+			break waitForTarget
+		case sig := <-signals:
+			interrupted = true
+			interrupts++
+			if cmd.Process == nil {
+				continue
+			}
+			if interrupts == 1 {
+				_ = cmd.Process.Signal(sig)
+				continue
+			}
+			_ = cmd.Process.Kill()
+		}
+	}
+
+	drainPendingTerminalInput()
+
+	if interrupted {
+		fmt.Println()
+		return
+	}
+
 	if err != nil {
 		fmt.Println()
 		fmt.Println(styles.Text(fmt.Sprintf("⚠️  Error executing target: %v", err), styles.ErrorColor))
